@@ -1,0 +1,8 @@
+function save_trace_to_file(xData, yData, File, Path, TraceNumber, xCoord, yCoord, ConditionString)
+    TraceString = string(TraceNumber);
+    xCoordString = string(xCoord);
+    yCoordString = string(yCoord);
+    MyFileString = [Path, ConditionString, TraceString, 'x', xCoordString, 'y', yCoordString, File];
+    SaveFileNamePath = join(MyFileString);
+    SaveData = [xData,yData];
+    writematrix(SaveData,SaveFileNamePath);
