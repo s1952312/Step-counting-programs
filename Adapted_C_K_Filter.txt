@@ -1,0 +1,23 @@
+function [Filtered_Data] = Adapted_C_K_Filter(Data, Frames_per_trace, Window_Size)
+
+    ShiftStart_initial = Data(1:(Frames_per_trace - (Window_Size / 2)));
+    AddZeroVector = zeros((Window_Size / 2),1);
+    ShiftStart_final = [AddZeroVector; ShiftStart_initial];
+    
+    Mean_window_1 = movmean(Data, Window_Size);
+    Mean_window_2 = movmean(ShiftStart_final, Window_Size);
+    
+    Variance_window_1 = movvar(Data, Window_Size);
+    Variance_window_2 = movvar(ShiftStart_final, Window_Size);
+    
+    Filtered_Data = zeros(Frames_per_trace, 1);
+    
+    for j = 1:Frames_per_trace
+        if Variance_window_1(j) < Variance_window_2(j)
+            Filtered_Data(j) = Mean_window_1(j);
+        else
+            Filtered_Data(j) = Mean_window_2(j);
+        end
+    end
+    
+    Filtered_Data(1) = Filtered_Data(2);
