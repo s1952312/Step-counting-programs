@@ -1,0 +1,22 @@
+run("Clear Results");
+dir1 = getDirectory("Choose Source Directory ");
+dir2 = getDirectory("Choose Destination Directory ");
+list = getFileList(dir1);
+setBatchMode(true);
+for (i=0; i<list.length; i++) {
+	showProgress(i+1, list.length);
+	open(dir1+list[i]);
+	
+	run("Clear Results");
+	run("Enhance Contrast", "saturated=0.35");
+	run("Find Maxima...", "prominence=3000 output=[Point Selection]");
+
+	for (s = 1; s <= nSlices(); s++){
+		setSlice(s);
+		run("Measure");
+	}
+
+	
+	saveAs("Results",  dir2+list[i]+"_results.csv");
+	close();
+}
