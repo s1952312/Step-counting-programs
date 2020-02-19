@@ -1,0 +1,16 @@
+2020/02/19
+
+EXPERIMENT 
+	- Perform TIRF imaging of psd95 superclusters on the surface of a plasma cleaned slide. 		- Reduce the overall dye to protein ratio.
+		- Reduce the intensity of the 488 laser to minimise 1 frame photobleaching.
+		- Protein from HaloTag heterozygous mouse.
+
+CODING
+	- Go through and comment written code.
+	- Copy code text into text files.
+	- Write a summary of the Chung Kennedy filter (with references).
+
+OTHER
+	- Schedule meeting with Mathew.
+		- Loosing a sense of trajectory.
+		- Next steps.
