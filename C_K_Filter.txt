@@ -1,0 +1,27 @@
+function [Filtered_Data] = C_K_Filter(Data, Frames_per_trace, Window_Size, sensitivity_factor)
+
+    ShiftStart_initial = Data(1:(Frames_per_trace - (Window_Size / 2)));
+    AddZeroVector = zeros((Window_Size / 2),1);
+    ShiftStart_final = [AddZeroVector; ShiftStart_initial];
+    
+    Mean_window_1 = movmean(Data, Window_Size);
+    Mean_window_2 = movmean(ShiftStart_final, Window_Size);
+    
+    Variance_window_1 = movvar(Data, Window_Size)*1.0E-7;
+    Variance_window_2 = movvar(ShiftStart_final, Window_Size)*1.0E-7;
+    
+    Filtered_Data = zeros(Frames_per_trace, 1);
+    g1 = zeros(Frames_per_trace, 1);
+    g2 = zeros(Frames_per_trace, 1);
+%     Variance_uncon = zeros(Frames_per_trace, 1);
+%     T = zeros(Frames_per_trace, 1);
+    
+    for j = 1:Frames_per_trace % this loop is caculating the weighting functions for the Chung Kennedy filter
+        g1(j) = (Variance_window_2(j)^sensitivity_factor) / ((Variance_window_1(j)^sensitivity_factor) + (Variance_window_2(j)^sensitivity_factor));
+        g2(j) = (Variance_window_1(j)^sensitivity_factor) / ((Variance_window_1(j)^sensitivity_factor) + (Variance_window_2(j)^sensitivity_factor));
+        Filtered_Data(j) = (g1(j) * Mean_window_1(j)) + (g2(j) * Mean_window_2(j)); % This is the Chung Kennnedy filtered data
+%         Variance_uncon(j) = sqrt((g1(j) * Variance_window_1(j)^2) + (g2(j) * Variance_window_2(j)^2)); % This is the uncontaminated variance
+%         T(j) = ((Mean_window_1(j)- Mean_window_2(j))/Variance_uncon(j)); % This is the calculated t statistic, currently unused
+    end
+
+    Filtered_Data(1) = Filtered_Data(2);
