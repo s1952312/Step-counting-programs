@@ -1,0 +1,45 @@
+xAxis = 1:100;
+
+Number_of_steps = 1;
+b = Number_of_steps + 1;
+locs_peaks = (1:100);
+locs_peaks = locs_peaks';
+%locs_peaks = randi(100, 200, 1);
+
+upper_plateau = 30000;
+lower_plateau = upper_plateau;
+
+Appended_Data = [];
+
+for i = 1:100
+    lower_plateau = 20000;
+    Step_Function = [];
+    this_peak = locs_peaks(i);
+    for j = 1:b
+        a = j - 1;
+        if j == 1
+            for k = 1:this_peak
+                Step_Function(k) = upper_plateau;
+            end
+        elseif j == b
+            for k = this_peak:100
+                Step_Function(k) = lower_plateau;
+            end
+        else
+        end
+    end
+    Appended_Data = [Appended_Data ; Step_Function'];
+end
+
+AD_New = Appended_Data;
+
+writematrix(locs_peaks, 'M:\DATA\test_save_location\locs_peaks_location_sensitivity.csv')
+
+writematrix(AD_New, 'M:\DATA\test_save_location\Appended_Data_location_sensitivity.csv')
+m = numel(AD_New);
+
+rand(m,1);
+signal_with_noise = AD_New + rand(m,1).*(AD_New/5);
+
+writematrix(signal_with_noise, 'M:\DATA\test_save_location\signal_with_noise_location_sensitivity.csv')
+
