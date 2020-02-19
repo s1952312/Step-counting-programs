@@ -1,0 +1,5 @@
+for (s = 1; s <= nSlices(); s++){
+	setSlice(s);
+	run("Measure");
+}
+
