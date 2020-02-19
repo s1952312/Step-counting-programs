@@ -1,0 +1,106 @@
+function [Step_Function, Number_of_steps, Number_positive_steps, locs_peaks] = Step_Fitting(Data, xAxis, Peak_Threshold, T_Threshold, Sensitivity_Factor, Window_Size)
+
+    differential_y = diff(Data) ./ diff(xAxis);
+    [pks,locs] = findpeaks(abs(differential_y));
+    indices = abs(pks(:)) < Peak_Threshold;
+    pks(indices) = [];
+    locs(indices) = [];
+    
+    T = zeros(numel(locs),1);
+    Number_positive_steps = 0;
+    
+    if numel(locs) > 0
+        
+        for j = 1:numel(locs)
+            if ((locs(j) - Window_Size) > 0) && ((locs(j) + Window_Size) < numel(Data))
+                lower_bound = locs(j) - Window_Size;
+                upper_bound = locs(j) + Window_Size;
+                window_1 = Data(lower_bound:locs(j));
+                window_2 = Data(locs(j):upper_bound);
+            elseif ((locs(j) - Window_Size) < 0)
+                upper_bound = locs(j) + Window_Size;
+                window_1 = Data(1:locs(j));
+                window_2 = Data(locs(j):upper_bound);
+            elseif ((locs(j) + Window_Size) > numel(Data))
+                lower_bound = locs(j) - Window_Size;
+                window_1 = Data(lower_bound:locs(j));
+                window_2 = Data(locs(j):end);
+            else
+                window_1 = 0;
+                window_2 = 0;
+            end
+
+            S1 = var(window_1);
+            S2 = var(window_2);
+            
+            S1_g = var(window_1)*1.0E-7;
+            S2_g = var(window_2)*1.0E-7;
+
+            M1 = mean(window_1);
+            M2 = mean(window_2);
+
+            g1 = ((S2_g^Sensitivity_Factor)/((S1_g^Sensitivity_Factor)+(S2_g^Sensitivity_Factor)));
+            g2 = ((S1_g^Sensitivity_Factor)/((S1_g^Sensitivity_Factor)+(S2_g^Sensitivity_Factor)));
+
+            S = sqrt((g1*(S1^2))+(g2*(S2^2)));
+
+            size_of_step = M1 - M2;
+
+            T(j) = size_of_step / S;
+
+            if abs(T(j)) > T_Threshold
+                locs_peaks(j) = locs(j);
+                pks_height(j) = pks(j);
+                T_positive(j) = T(j);
+            else
+                locs_peaks(j) = 0;
+                pks_height(j) = 0;
+                T_positive(j) = -1;
+            end
+            
+            if abs(T(j)) > T_Threshold && size_of_step > 0
+                Number_positive_steps = Number_positive_steps + 1;
+            else
+            end
+        end
+    else
+        locs_peaks = 0;
+        pks_height = 0;
+        T_positive = 0;
+    end
+    
+    indice = abs(locs_peaks(:)) == 0;
+    locs_peaks(indice) = [];
+    
+    Number_of_steps = numel(locs_peaks);
+    b = Number_of_steps + 1;
+    
+    if Number_of_steps > 0
+        for j = 1:b
+            a = j - 1;
+            if j == 1
+                for k = 1:locs_peaks(j)
+                    Step_Function(k) = mean(Data(1:locs_peaks(j)));
+                    Step_xAxis(k) = k;
+                end
+            elseif (1 < j) && (j < b)
+                for k = locs_peaks(a):locs_peaks(j)
+                    Step_Function(k) = mean(Data(locs_peaks(a):locs_peaks(j)));
+                    Step_xAxis(k) = k;
+                end
+            elseif j == b
+                for k = locs_peaks(a):numel(Data)
+                    Step_Function(k) = mean(Data(locs_peaks(a):end));
+                end
+            else
+            end
+        end
+    else
+        Step_Function = 0;
+    end
+    
+    
+    if numel(locs_peaks) == 0
+        locs_peaks = 0;
+    else
+    end
