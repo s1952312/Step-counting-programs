@@ -1,0 +1,6 @@
+function [file, path, data] = load_data_from_file(R1,C1)
+    [file,path] = uigetfile('*.csv');
+    myfullfile = fullfile(path, file);
+    rawdata = dlmread(myfullfile,',',R1,C1);
+    data = sortrows(rawdata, [3 4]);
+    data(:,1) = [];
