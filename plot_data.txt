@@ -1,0 +1,7 @@
+function [xAxis, yAxis, xCoord, yCoord] = plot_data(CellArray, trace_number)
+    single_trace_file_data = CellArray{trace_number,1};  % extracts the data from the cell array for the specified trace
+    xAxis = single_trace_file_data(:,4);  % This is the x axis extracted from columb 4 of the data file
+    yAxis = single_trace_file_data(:,1);  % This is the y axis extracted from columb 1 of the data file
+    xCoord = single_trace_file_data(1,2);  % find the x coordinate of the selected spot on the original image
+    yCoord = single_trace_file_data(1,3);  % find the y coordinate of the selected spot on the original image
+end
