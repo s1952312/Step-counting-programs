@@ -1,0 +1,190 @@
+select_directory_488 = uigetdir('M:\DATA');
+directory_488 = dir([select_directory_488, '\*.csv']);
+numfiles_488 = length(directory_488);
+
+select_directory_647 = uigetdir('M:\DATA');
+directory_647 = dir([select_directory_647, '\*.csv']);
+numfiles_647 = length(directory_647);
+
+data = cell(numfiles_488,2);
+
+
+frames_per_trace = 100;
+sensitivity_r = 50;
+window_size = 6;
+
+peak_thresh_488 = 800;
+peak_thresh_647 = 2500;
+t_thresh = 0.001;
+
+
+for j = 1:numfiles_488
+    data{j,1} = readmatrix(fullfile(select_directory_488, directory_488(j).name));
+    data{j,2} = readmatrix(fullfile(select_directory_647, directory_647(j).name));
+end
+    
+% for k = 1:numfiles_647
+%     data{k,2} = readmatrix(fullfile(select_directory_647, directory_647(k).name));
+%     fid_647(j) = fopen( fullfile(select_directory_647, directory_647(k).name));
+%     data{k,2} = fscanf(fid_647(j), '%f');
+%     fclose(fid_647(j));
+% end
+
+xCoord_488 = [];
+yCoord_488 = [];
+xCoord_647 = [];
+yCoord_647 = [];
+
+xCoord_488_cell = {};
+yCoord_488_cell = {};
+xCoord_647_cell = {};
+yCoord_647_cell = {};
+
+Numb_zeros_488 = 0;
+Numb_ones_488 = 0;
+Numb_twos_488 = 0;
+Numb_threes_488 = 0;
+Numb_mores_488 = 0;
+
+for i = 1:numfiles_488
+    rawdata_488 = data{i,1};
+    rel_column_data_488 = rawdata_488(1:end, 2:end);
+    sorted_data_488 = sortrows(rel_column_data_488, [2 3]);
+    
+    rows_488 = size(sorted_data_488, 1);
+    NoCells_488 = rows_488 / frames_per_trace;
+    Hundred_vector_488 = frames_per_trace * (ones(NoCells_488, 1));
+    MyCellArray_488 = mat2cell(sorted_data_488, Hundred_vector_488, 4);
+    
+    xCoord_488 = zeros(NoCells_488, 1);
+    yCoord_488 = zeros(NoCells_488, 1);
+    
+    for m = 1:NoCells_488
+        
+        [xAxis, yAxis, xCoord, yCoord] = plot_data(MyCellArray_488, m);
+        
+        [FiltData_488] = C_K_Filter(yAxis, frames_per_trace, window_size, sensitivity_r);
+        
+        xCoord_488(m,1) = xCoord;
+        yCoord_488(m,1) = yCoord;
+        
+        [~,~, positive_steps_488] = Step_Fitting(FiltData_488, xAxis, peak_thresh_488, t_thresh, sensitivity_r, window_size);
+        
+        if positive_steps_488 == 0
+            Numb_zeros_488 = Numb_zeros_488 + 1;
+        elseif positive_steps_488 == 1
+            Numb_ones_488 = Numb_ones_488 + 1;
+        elseif positive_steps_488 == 2
+            Numb_twos_488 = Numb_twos_488 + 1;
+        elseif positive_steps_488 == 3
+            Numb_threes_488 = Numb_threes_488 + 1;
+        else
+            Numb_mores_488 = Numb_mores_488 + 1;
+        end
+    end
+    xCoord_488_cell{i,1} = xCoord_488;
+    yCoord_488_cell{i,1} = yCoord_488;
+end
+
+Numb_zeros_647 = 0;
+Numb_ones_647 = 0;
+Numb_twos_647 = 0;
+Numb_threes_647 = 0;
+Numb_mores_647 = 0;
+
+for w = 1:numfiles_647
+    rawdata_647 = data{w,2};
+    rel_column_data_647 = rawdata_647(1:end, 2:end);
+    sorted_data_647 = sortrows(rel_column_data_647, [2 3]);
+    
+    rows_647 = size(sorted_data_647, 1);
+    NoCells_647 = rows_647 / frames_per_trace;
+    Hundred_vector_647 = frames_per_trace * (ones(NoCells_647, 1));
+    MyCellArray_647 = mat2cell(sorted_data_647, Hundred_vector_647, 4);
+    
+    xCoord_647 = zeros(NoCells_647,1);
+    yCoord_647 = zeros(NoCells_647,1);
+    
+    for t = 1:NoCells_647
+        
+        [xAxis, yAxis, xCoord, yCoord] = plot_data(MyCellArray_647, t);
+        
+        [FiltData_647] = C_K_Filter(yAxis, frames_per_trace, window_size, sensitivity_r);
+        
+        xCoord_647(t,1) = xCoord;
+        yCoord_647(t,1) = yCoord;
+        
+        [~,~, positive_steps_647] = Step_Fitting(FiltData_647, xAxis, peak_thresh_647, t_thresh, sensitivity_r, window_size);
+        
+        if positive_steps_647 == 0
+            Numb_zeros_647 = Numb_zeros_647 + 1;
+        elseif positive_steps_647 == 1
+            Numb_ones_647 = Numb_ones_647 + 1;
+        elseif positive_steps_647 == 2
+            Numb_twos_647 = Numb_twos_647 + 1;
+        elseif positive_steps_647 == 3
+            Numb_threes_647 = Numb_threes_647 + 1;
+        else
+            Numb_mores_647 = Numb_mores_647 + 1;
+        end
+    end
+    xCoord_647_cell{w,1} = xCoord_647;
+    yCoord_647_cell{w,1} = yCoord_647;
+end
+
+
+Coincident_spots = 0;
+x_coincident_coordinates = [];
+y_coincident_coordinates = [];
+file_number = [];
+trace_no_488 = [];
+trace_no_647 = [];
+
+for z = 1:numfiles_488
+    number_traces_488 = size(xCoord_488_cell{z}, 1);
+    number_traces_647 = size(xCoord_647_cell{z}, 1);
+    xCoord_488 = xCoord_488_cell{z};
+    yCoord_488 = yCoord_488_cell{z};
+    xCoord_647 = xCoord_647_cell{z};
+    yCoord_647 = yCoord_647_cell{z};
+    
+    for c = 1:number_traces_488 
+        for v = 1:number_traces_647
+            xdiff = xCoord_488(c) - xCoord_647(v);
+            ydiff = yCoord_488(c) - yCoord_647(v);
+            if abs(xdiff) < 1 && abs(ydiff) < 1
+                Coincident_spots = Coincident_spots + 1;
+                x_coincident_coordinates = [x_coincident_coordinates; xCoord_647(v)];
+                y_coincident_coordinates = [y_coincident_coordinates; yCoord_647(v)];
+                trace_no_488 = [trace_no_488; c];
+                trace_no_647 = [trace_no_647; v];
+                file_number = [file_number; z];
+            else
+            end
+        end
+    end
+end    
+
+R_488 = ["For 488: 0 steps = ", num2str(Numb_zeros_488), "1 step = ", num2str(Numb_ones_488), "2 steps = ", num2str(Numb_twos_488), "3 steps = ", num2str(Numb_threes_488), "3+ steps 
+= ", num2str(Numb_mores_488)];
+R_647 = ["For 647: 0 steps = ", num2str(Numb_zeros_647), "1 step = ", num2str(Numb_ones_647), "2 steps = ", num2str(Numb_twos_647), "3 steps = ", num2str(Numb_threes_647), "3+ steps 
+= ", num2str(Numb_mores_647)];
+
+new_R_488 = join(R_488);
+new_R_647 = join(R_647);
+
+coordinates = [file_number, trace_no_488, trace_no_647, x_coincident_coordinates, y_coincident_coordinates];
+
+save_location = uigetdir('M:\DATA');
+
+filename = [save_location, '\coincident_spots_difference_1.csv'];
+filename_results = join(filename);
+writematrix(coordinates, filename_results);
+
+Coincidence = ["There are ", num2str(Coincident_spots), " concident spots. The coordinates of these are contained in ", filename_results, ". The headings of the columns are: File, 
+488 trace number, 647 trace number, x coordinate, y coordinate."];
+new_Coinc = join(Coincidence);
+
+disp(new_R_488);
+disp(new_R_647);
+disp(new_Coinc);
