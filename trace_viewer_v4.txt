@@ -1,0 +1,654 @@
+classdef Trace_viewer_V4 < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                      matlab.ui.Figure
+        UIAxes                        matlab.ui.control.UIAxes
+        SteppedTraceAnalysisLabel     matlab.ui.control.Label
+        Panel                         matlab.ui.container.Panel
+        NextButton                    matlab.ui.control.Button
+        PreviousButton                matlab.ui.control.Button
+        GoButton                      matlab.ui.control.Button
+        SelectfileButton              matlab.ui.control.Button
+        FolderNameText_2              matlab.ui.control.EditField
+        TraceEditFieldLabel           matlab.ui.control.Label
+        TraceEditField                matlab.ui.control.NumericEditField
+        ofEditFieldLabel              matlab.ui.control.Label
+        ofEditField                   matlab.ui.control.NumericEditField
+        xEditFieldLabel               matlab.ui.control.Label
+        xEditField                    matlab.ui.control.NumericEditField
+        yEditFieldLabel               matlab.ui.control.Label
+        yEditField                    matlab.ui.control.NumericEditField
+        CoordinatesofspotLabel        matlab.ui.control.Label
+        FramespertraceEditFieldLabel  matlab.ui.control.Label
+        FramespertraceEditField       matlab.ui.control.NumericEditField
+        FilteringparametersPanel      matlab.ui.container.Panel
+        WindowsizeEditField           matlab.ui.control.NumericEditField
+        WindowsizeEditField_2Label    matlab.ui.control.Label
+        PeakThreshEditFieldLabel      matlab.ui.control.Label
+        PeakThreshEditField           matlab.ui.control.NumericEditField
+        TThreshEditFieldLabel         matlab.ui.control.Label
+        TThreshEditField              matlab.ui.control.NumericEditField
+        NoofstepsEditField_2Label     matlab.ui.control.Label
+        NoofstepsEditField            matlab.ui.control.NumericEditField
+        SensitivityrEditFieldLabel    matlab.ui.control.Label
+        SensitivityrEditField         matlab.ui.control.NumericEditField
+        Panel_2                       matlab.ui.container.Panel
+        TraceButton                   matlab.ui.control.Button
+        FiltereddataButton            matlab.ui.control.Button
+        StepfitButton                 matlab.ui.control.Button
+        SaveLabel                     matlab.ui.control.Label
+        FrequencycountofstepspertracePanel  matlab.ui.container.Panel
+        GridLayout                    matlab.ui.container.GridLayout
+        EditFieldLabel                matlab.ui.control.Label
+        EditField                     matlab.ui.control.NumericEditField
+        EditField_2Label              matlab.ui.control.Label
+        EditField_2                   matlab.ui.control.NumericEditField
+        EditField_3Label              matlab.ui.control.Label
+        EditField_3                   matlab.ui.control.NumericEditField
+        EditField_4Label              matlab.ui.control.Label
+        EditField_4                   matlab.ui.control.NumericEditField
+        EditField_5Label              matlab.ui.control.Label
+        EditField_5                   matlab.ui.control.NumericEditField
+        CountButton                   matlab.ui.control.Button
+        Panel_6                       matlab.ui.container.Panel
+        StepfitLabel                  matlab.ui.control.Label
+        CheckBox                      matlab.ui.control.CheckBox
+        ShowLabel                     matlab.ui.control.Label
+        FiltereddataLabel             matlab.ui.control.Label
+        CheckBox_2                    matlab.ui.control.CheckBox
+    end
+
+    
+    properties (Access = public)
+        file
+        path
+        mydata
+        MyCellArray
+        coord
+        xAxis
+        yAxis
+        MyPlotData
+        xCoordinate
+        yCoordinate
+        WindowSize
+        NumberOfCells
+        FiltData
+        xb
+        yb
+        Step_Function
+        NumberOfSteps
+        r
+        positive_steps
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: SelectfileButton
+        function SelectfileButtonPushed(app, event)
+            [app.file, app.path, app.mydata] = load_data_from_file(1,0);
+            
+            app.FolderNameText_2.Value = [app.file];
+            rows = size(app.mydata,1);
+           
+            app.NumberOfCells = rows/app.FramespertraceEditField.Value; % This is the number of traces in the data file
+            HundredVector = app.FramespertraceEditField.Value*(ones(app.NumberOfCells, 1));
+            app.MyCellArray = mat2cell(app.mydata,HundredVector,4); % Splits the data file into a cell array where each cell contains one trace
+            
+            app.ofEditField.Value = app.NumberOfCells; % Displays the number of traces in the data file
+            app.TraceEditField.Value = 1; % Sets trace edit field value to 1 to view first trace
+            
+            [app.xAxis, app.yAxis, app.xCoordinate, app.yCoordinate] = plot_data(app.MyCellArray, app.TraceEditField.Value);
+            
+            app.xEditField.Value = app.xCoordinate; % Display the coordinates in the app
+            app.yEditField.Value = app.yCoordinate;
+            
+            app.r = app.SensitivityrEditField.Value;
+            
+            %Data = smooth(app.yAxis, app.PeakThreshEditField.Value, 'rlowess'); % Smooths the trace data to eliminate some of the noise
+            
+            [app.FiltData] = C_K_Filter(app.yAxis, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value, app.r);
+            
+            %[app.FiltData] = Adapted_C_K_Filter(Data, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value);
+            
+            [app.Step_Function, app.NumberOfSteps] = Step_Fitting(app.FiltData, app.xAxis, app.PeakThreshEditField.Value, app.TThreshEditField.Value, app.r, 
+app.WindowsizeEditField.Value);
+            
+            app.NoofstepsEditField.Value = app.NumberOfSteps; % Display the number of steps in the app
+
+            if app.CheckBox.Value == 1 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r', app.xAxis, app.Step_Function,'b'); % Plots raw data and filtered data
+            elseif app.CheckBox.Value == 1 && app.CheckBox_2.Value == 0
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g',app.xAxis,app.Step_Function,'b');
+            elseif app.CheckBox.Value == 0 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r');
+            else
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g');
+            end
+            
+        end
+
+        % Button pushed function: NextButton
+        function NextButtonPushed(app, event)
+            if app.TraceEditField.Value ~= app.NumberOfCells
+                app.TraceEditField.Value = app.TraceEditField.Value + 1;
+            else
+            end
+                
+            [app.xAxis, app.yAxis, app.xCoordinate, app.yCoordinate] = plot_data(app.MyCellArray, app.TraceEditField.Value);
+            
+            app.xEditField.Value = app.xCoordinate; % Display the coordinates in the app
+            app.yEditField.Value = app.yCoordinate;
+            
+            app.r = app.SensitivityrEditField.Value;
+            
+            %Data = smooth(app.yAxis, app.PeakThreshEditField.Value, 'rlowess'); % Smooths the trace data to eliminate some of the noise
+            
+            [app.FiltData] = C_K_Filter(app.yAxis, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value, app.r);
+            
+            %[app.FiltData] = Adapted_C_K_Filter(Data, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value);
+            
+            [app.Step_Function, app.NumberOfSteps] = Step_Fitting(app.FiltData, app.xAxis, app.PeakThreshEditField.Value, app.TThreshEditField.Value, app.r, 
+app.WindowsizeEditField.Value);
+            
+            app.NoofstepsEditField.Value = app.NumberOfSteps; % Display the number of steps in the app
+
+            if app.CheckBox.Value == 1 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r', app.xAxis, app.Step_Function,'b'); % Plots raw data and filtered data
+            elseif app.CheckBox.Value == 1 && app.CheckBox_2.Value == 0
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g',app.xAxis,app.Step_Function,'b');
+            elseif app.CheckBox.Value == 0 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r');
+            else
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g');
+            end
+        end
+
+        % Button pushed function: PreviousButton
+        function PreviousButtonPushed(app, event)
+            if app.TraceEditField.Value ~= 1
+                app.TraceEditField.Value = app.TraceEditField.Value - 1;
+            else
+            end
+            
+            [app.xAxis, app.yAxis, app.xCoordinate, app.yCoordinate] = plot_data(app.MyCellArray, app.TraceEditField.Value);
+            
+            app.xEditField.Value = app.xCoordinate; % Display the coordinates in the app
+            app.yEditField.Value = app.yCoordinate;
+            
+            %Data = smooth(app.yAxis, app.PeakThreshEditField.Value, 'rlowess'); % Smooths the trace data to eliminate some of the noise
+            
+            app.r = app.SensitivityrEditField.Value;
+            
+            [app.FiltData] = C_K_Filter(app.yAxis, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value, app.r);
+            
+            %[app.FiltData] = Adapted_C_K_Filter(Data, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value);
+            
+            [app.Step_Function, app.NumberOfSteps] = Step_Fitting(app.FiltData, app.xAxis, app.PeakThreshEditField.Value, app.TThreshEditField.Value, app.r, 
+app.WindowsizeEditField.Value);
+            
+            app.NoofstepsEditField.Value = app.NumberOfSteps; % Display the number of steps in the app
+
+            if app.CheckBox.Value == 1 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r', app.xAxis, app.Step_Function,'b'); % Plots raw data and filtered data
+            elseif app.CheckBox.Value == 1 && app.CheckBox_2.Value == 0
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g',app.xAxis,app.Step_Function,'b');
+            elseif app.CheckBox.Value == 0 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r');
+            else
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g');
+            end
+        end
+
+        % Button pushed function: GoButton
+        function GoButtonPushed(app, event)
+            [app.xAxis, app.yAxis, app.xCoordinate, app.yCoordinate] = plot_data(app.MyCellArray, app.TraceEditField.Value);
+            
+            app.xEditField.Value = app.xCoordinate; % Display the coordinates in the app
+            app.yEditField.Value = app.yCoordinate;
+            
+            app.r = app.SensitivityrEditField.Value;
+            
+            %Data = smooth(app.yAxis, app.PeakThreshEditField.Value, 'rlowess'); % Smooths the trace data to eliminate some of the noise
+            
+            [app.FiltData] = C_K_Filter(app.yAxis, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value, app.r);
+            
+            %[app.FiltData] = Adapted_C_K_Filter(Data, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value);
+            
+            [app.Step_Function, app.NumberOfSteps] = Step_Fitting(app.FiltData, app.xAxis, app.PeakThreshEditField.Value, app.TThreshEditField.Value, app.r, 
+app.WindowsizeEditField.Value);
+            
+            app.NoofstepsEditField.Value = app.NumberOfSteps; % Display the number of steps in the app
+
+            if app.CheckBox.Value == 1 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r', app.xAxis, app.Step_Function,'b'); % Plots raw data and filtered data
+            elseif app.CheckBox.Value == 1 && app.CheckBox_2.Value == 0
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g',app.xAxis,app.Step_Function,'b');
+            elseif app.CheckBox.Value == 0 && app.CheckBox_2.Value == 1
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g', app.xAxis, app.FiltData,'r');
+            else
+                plot(app.UIAxes,app.xAxis,app.yAxis,'g');
+            end
+                
+        end
+
+        % Button pushed function: TraceButton
+        function TraceButtonPushed(app, event)
+            save_trace_to_file(app.xAxis, app.yAxis, app.file, app.path, app.TraceEditField.Value, app.xCoordinate, app.yCoordinate, 'Trace');
+        end
+
+        % Button pushed function: FiltereddataButton
+        function FiltereddataButtonPushed(app, event)
+            save_trace_to_file(app.xAxis, app.FiltData, app.file, app.path, app.TraceEditField.Value, app.xCoordinate, app.yCoordinate, 'FilteredData');
+        end
+
+        % Button pushed function: StepfitButton
+        function StepfitButtonPushed(app, event)
+            save_trace_to_file(app.xAxis, app.Step_Function', app.file, app.path, app.TraceEditField.Value, app.xCoordinate, app.yCoordinate, 'StepData');
+        end
+
+        % Button pushed function: CountButton
+        function CountButtonPushed(app, event)
+                        
+            Numb_zeros = 0;
+            Numb_ones = 0;
+            Numb_twos = 0;
+            Numb_threes = 0;
+            Numb_mores = 0;
+            
+            for j = 1:app.NumberOfCells
+                
+                [app.xAxis, app.yAxis, app.xCoordinate, app.yCoordinate] = plot_data(app.MyCellArray, j);
+                
+                app.r = app.SensitivityrEditField.Value;
+                                         
+%               Data = smooth(app.yAxis, app.PeakThreshEditField.Value, 'rlowess'); % Smooths the trace data to eliminate some of the noise
+                
+                [app.FiltData] = C_K_Filter(app.yAxis, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value, app.r);
+                
+                %[app.FiltData] = Adapted_C_K_Filter(Data, app.FramespertraceEditField.Value, app.WindowsizeEditField.Value);
+                                
+                [~, app.NumberOfSteps, app.positive_steps, locs_peaks] = Step_Fitting(app.FiltData, app.xAxis, app.PeakThreshEditField.Value, app.TThreshEditField.Value, app.r, 
+app.WindowsizeEditField.Value);
+                            
+                peak_location_array{j} = locs_peaks;
+                
+                if app.positive_steps == 0
+                    Numb_zeros = Numb_zeros + 1;
+                elseif app.positive_steps == 1
+                    Numb_ones = Numb_ones + 1;
+                elseif app.positive_steps == 2
+                    Numb_twos = Numb_twos + 1;
+                elseif app.positive_steps == 3
+                    Numb_threes = Numb_threes + 1;
+                else
+                    Numb_mores = Numb_mores + 1;
+                end
+            end
+            
+%             file_name_string = ['M:\DATA\test_save_location\detected_peaks_ws_6_PT_2500_TT_0.001', '_location_sensitivity.csv'];
+%             joined_file_string = join(file_name_string);
+%              
+%             writecell(peak_location_array', joined_file_string)
+            %peak_location_array'
+            
+            app.EditField.Value = Numb_zeros;
+            app.EditField_2.Value = Numb_ones;
+            app.EditField_3.Value = Numb_twos;
+            app.EditField_4.Value = Numb_threes;
+            app.EditField_5.Value = Numb_mores;
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 531 699];
+            app.UIFigure.Name = 'UI Figure';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            title(app.UIAxes, '')
+            xlabel(app.UIAxes, 'Frame')
+            ylabel(app.UIAxes, 'Intensity (a.u.)')
+            app.UIAxes.PlotBoxAspectRatio = [1.56206896551724 1 1];
+            app.UIAxes.YTick = [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1];
+            app.UIAxes.Position = [16 88 500 332];
+
+            % Create SteppedTraceAnalysisLabel
+            app.SteppedTraceAnalysisLabel = uilabel(app.UIFigure);
+            app.SteppedTraceAnalysisLabel.FontSize = 30;
+            app.SteppedTraceAnalysisLabel.FontWeight = 'bold';
+            app.SteppedTraceAnalysisLabel.Position = [97 650 351 50];
+            app.SteppedTraceAnalysisLabel.Text = 'Stepped Trace Analysis';
+
+            % Create Panel
+            app.Panel = uipanel(app.UIFigure);
+            app.Panel.Position = [17 536 345 115];
+
+            % Create NextButton
+            app.NextButton = uibutton(app.Panel, 'push');
+            app.NextButton.ButtonPushedFcn = createCallbackFcn(app, @NextButtonPushed, true);
+            app.NextButton.Position = [299 47 34 22];
+            app.NextButton.Text = 'Next';
+
+            % Create PreviousButton
+            app.PreviousButton = uibutton(app.Panel, 'push');
+            app.PreviousButton.ButtonPushedFcn = createCallbackFcn(app, @PreviousButtonPushed, true);
+            app.PreviousButton.Position = [230 47 62 22];
+            app.PreviousButton.Text = 'Previous';
+
+            % Create GoButton
+            app.GoButton = uibutton(app.Panel, 'push');
+            app.GoButton.ButtonPushedFcn = createCallbackFcn(app, @GoButtonPushed, true);
+            app.GoButton.Position = [188 47 34 22];
+            app.GoButton.Text = 'Go';
+
+            % Create SelectfileButton
+            app.SelectfileButton = uibutton(app.Panel, 'push');
+            app.SelectfileButton.ButtonPushedFcn = createCallbackFcn(app, @SelectfileButtonPushed, true);
+            app.SelectfileButton.BackgroundColor = [0.651 0.651 0.651];
+            app.SelectfileButton.FontWeight = 'bold';
+            app.SelectfileButton.FontColor = [1 1 1];
+            app.SelectfileButton.Position = [10 83 88 22];
+            app.SelectfileButton.Text = 'Select file';
+
+            % Create FolderNameText_2
+            app.FolderNameText_2 = uieditfield(app.Panel, 'text');
+            app.FolderNameText_2.Position = [93 83 240 22];
+
+            % Create TraceEditFieldLabel
+            app.TraceEditFieldLabel = uilabel(app.Panel);
+            app.TraceEditFieldLabel.HorizontalAlignment = 'right';
+            app.TraceEditFieldLabel.Position = [12 47 36 22];
+            app.TraceEditFieldLabel.Text = 'Trace';
+
+            % Create TraceEditField
+            app.TraceEditField = uieditfield(app.Panel, 'numeric');
+            app.TraceEditField.Position = [56 47 48 22];
+
+            % Create ofEditFieldLabel
+            app.ofEditFieldLabel = uilabel(app.Panel);
+            app.ofEditFieldLabel.HorizontalAlignment = 'right';
+            app.ofEditFieldLabel.Position = [111 47 15 22];
+            app.ofEditFieldLabel.Text = 'of';
+
+            % Create ofEditField
+            app.ofEditField = uieditfield(app.Panel, 'numeric');
+            app.ofEditField.Position = [133 47 44 22];
+
+            % Create xEditFieldLabel
+            app.xEditFieldLabel = uilabel(app.Panel);
+            app.xEditFieldLabel.HorizontalAlignment = 'right';
+            app.xEditFieldLabel.Position = [120 11 10 22];
+            app.xEditFieldLabel.Text = 'x';
+
+            % Create xEditField
+            app.xEditField = uieditfield(app.Panel, 'numeric');
+            app.xEditField.Position = [133 11 36 22];
+
+            % Create yEditFieldLabel
+            app.yEditFieldLabel = uilabel(app.Panel);
+            app.yEditFieldLabel.HorizontalAlignment = 'right';
+            app.yEditFieldLabel.Position = [160 11 25 22];
+            app.yEditFieldLabel.Text = 'y';
+
+            % Create yEditField
+            app.yEditField = uieditfield(app.Panel, 'numeric');
+            app.yEditField.Position = [188 11 34 22];
+
+            % Create CoordinatesofspotLabel
+            app.CoordinatesofspotLabel = uilabel(app.Panel);
+            app.CoordinatesofspotLabel.Position = [9 11 113 22];
+            app.CoordinatesofspotLabel.Text = 'Coordinates of spot:';
+
+            % Create FramespertraceEditFieldLabel
+            app.FramespertraceEditFieldLabel = uilabel(app.Panel);
+            app.FramespertraceEditFieldLabel.HorizontalAlignment = 'right';
+            app.FramespertraceEditFieldLabel.Position = [228 8 67 28];
+            app.FramespertraceEditFieldLabel.Text = {'Frames per'; 'trace'};
+
+            % Create FramespertraceEditField
+            app.FramespertraceEditField = uieditfield(app.Panel, 'numeric');
+            app.FramespertraceEditField.Position = [303 11 30 22];
+            app.FramespertraceEditField.Value = 100;
+
+            % Create FilteringparametersPanel
+            app.FilteringparametersPanel = uipanel(app.UIFigure);
+            app.FilteringparametersPanel.TitlePosition = 'centertop';
+            app.FilteringparametersPanel.Title = 'Filtering parameters';
+            app.FilteringparametersPanel.FontWeight = 'bold';
+            app.FilteringparametersPanel.Position = [373 490 143 161];
+
+            % Create WindowsizeEditField
+            app.WindowsizeEditField = uieditfield(app.FilteringparametersPanel, 'numeric');
+            app.WindowsizeEditField.Position = [88 111 44 22];
+            app.WindowsizeEditField.Value = 6;
+
+            % Create WindowsizeEditField_2Label
+            app.WindowsizeEditField_2Label = uilabel(app.FilteringparametersPanel);
+            app.WindowsizeEditField_2Label.HorizontalAlignment = 'right';
+            app.WindowsizeEditField_2Label.Position = [5 111 73 22];
+            app.WindowsizeEditField_2Label.Text = 'Window size';
+
+            % Create PeakThreshEditFieldLabel
+            app.PeakThreshEditFieldLabel = uilabel(app.FilteringparametersPanel);
+            app.PeakThreshEditFieldLabel.HorizontalAlignment = 'right';
+            app.PeakThreshEditFieldLabel.Position = [6 84 74 22];
+            app.PeakThreshEditFieldLabel.Text = 'Peak Thresh';
+
+            % Create PeakThreshEditField
+            app.PeakThreshEditField = uieditfield(app.FilteringparametersPanel, 'numeric');
+            app.PeakThreshEditField.Position = [88 84 43 22];
+            app.PeakThreshEditField.Value = 2500;
+
+            % Create TThreshEditFieldLabel
+            app.TThreshEditFieldLabel = uilabel(app.FilteringparametersPanel);
+            app.TThreshEditFieldLabel.HorizontalAlignment = 'right';
+            app.TThreshEditFieldLabel.Position = [26 58 54 22];
+            app.TThreshEditFieldLabel.Text = 'T Thresh';
+
+            % Create TThreshEditField
+            app.TThreshEditField = uieditfield(app.FilteringparametersPanel, 'numeric');
+            app.TThreshEditField.Position = [88 58 43 22];
+            app.TThreshEditField.Value = 0.001;
+
+            % Create NoofstepsEditField_2Label
+            app.NoofstepsEditField_2Label = uilabel(app.FilteringparametersPanel);
+            app.NoofstepsEditField_2Label.HorizontalAlignment = 'right';
+            app.NoofstepsEditField_2Label.Position = [11 6 70 22];
+            app.NoofstepsEditField_2Label.Text = 'No. of steps';
+
+            % Create NoofstepsEditField
+            app.NoofstepsEditField = uieditfield(app.FilteringparametersPanel, 'numeric');
+            app.NoofstepsEditField.Position = [88 6 43 22];
+
+            % Create SensitivityrEditFieldLabel
+            app.SensitivityrEditFieldLabel = uilabel(app.FilteringparametersPanel);
+            app.SensitivityrEditFieldLabel.HorizontalAlignment = 'right';
+            app.SensitivityrEditFieldLabel.Position = [12 32 69 22];
+            app.SensitivityrEditFieldLabel.Text = 'Sensitivity, r';
+
+            % Create SensitivityrEditField
+            app.SensitivityrEditField = uieditfield(app.FilteringparametersPanel, 'numeric');
+            app.SensitivityrEditField.Position = [88 32 43 22];
+            app.SensitivityrEditField.Value = 50;
+
+            % Create Panel_2
+            app.Panel_2 = uipanel(app.UIFigure);
+            app.Panel_2.Position = [16 433 500 45];
+
+            % Create TraceButton
+            app.TraceButton = uibutton(app.Panel_2, 'push');
+            app.TraceButton.ButtonPushedFcn = createCallbackFcn(app, @TraceButtonPushed, true);
+            app.TraceButton.Position = [104 11 103 22];
+            app.TraceButton.Text = 'Trace';
+
+            % Create FiltereddataButton
+            app.FiltereddataButton = uibutton(app.Panel_2, 'push');
+            app.FiltereddataButton.ButtonPushedFcn = createCallbackFcn(app, @FiltereddataButtonPushed, true);
+            app.FiltereddataButton.Position = [241 11 103 22];
+            app.FiltereddataButton.Text = 'Filtered data';
+
+            % Create StepfitButton
+            app.StepfitButton = uibutton(app.Panel_2, 'push');
+            app.StepfitButton.ButtonPushedFcn = createCallbackFcn(app, @StepfitButtonPushed, true);
+            app.StepfitButton.Position = [378 11 103 22];
+            app.StepfitButton.Text = 'Step fit';
+
+            % Create SaveLabel
+            app.SaveLabel = uilabel(app.Panel_2);
+            app.SaveLabel.FontSize = 20;
+            app.SaveLabel.FontWeight = 'bold';
+            app.SaveLabel.Position = [20 10 52 24];
+            app.SaveLabel.Text = 'Save';
+
+            % Create FrequencycountofstepspertracePanel
+            app.FrequencycountofstepspertracePanel = uipanel(app.UIFigure);
+            app.FrequencycountofstepspertracePanel.TitlePosition = 'centertop';
+            app.FrequencycountofstepspertracePanel.Title = 'Frequency count of steps per trace';
+            app.FrequencycountofstepspertracePanel.FontWeight = 'bold';
+            app.FrequencycountofstepspertracePanel.Position = [24 14 490 65];
+
+            % Create GridLayout
+            app.GridLayout = uigridlayout(app.FrequencycountofstepspertracePanel);
+            app.GridLayout.ColumnWidth = {20, '1.2x', 20, '1.2x', 20, '1.2x', 20, '1.2x', 20, '1.2x', '2x'};
+            app.GridLayout.RowHeight = {25};
+
+            % Create EditFieldLabel
+            app.EditFieldLabel = uilabel(app.GridLayout);
+            app.EditFieldLabel.HorizontalAlignment = 'right';
+            app.EditFieldLabel.Layout.Row = 1;
+            app.EditFieldLabel.Layout.Column = 1;
+            app.EditFieldLabel.Text = '0';
+
+            % Create EditField
+            app.EditField = uieditfield(app.GridLayout, 'numeric');
+            app.EditField.Layout.Row = 1;
+            app.EditField.Layout.Column = 2;
+
+            % Create EditField_2Label
+            app.EditField_2Label = uilabel(app.GridLayout);
+            app.EditField_2Label.HorizontalAlignment = 'right';
+            app.EditField_2Label.Layout.Row = 1;
+            app.EditField_2Label.Layout.Column = 3;
+            app.EditField_2Label.Text = '1';
+
+            % Create EditField_2
+            app.EditField_2 = uieditfield(app.GridLayout, 'numeric');
+            app.EditField_2.Layout.Row = 1;
+            app.EditField_2.Layout.Column = 4;
+
+            % Create EditField_3Label
+            app.EditField_3Label = uilabel(app.GridLayout);
+            app.EditField_3Label.HorizontalAlignment = 'right';
+            app.EditField_3Label.Layout.Row = 1;
+            app.EditField_3Label.Layout.Column = 5;
+            app.EditField_3Label.Text = '2';
+
+            % Create EditField_3
+            app.EditField_3 = uieditfield(app.GridLayout, 'numeric');
+            app.EditField_3.Layout.Row = 1;
+            app.EditField_3.Layout.Column = 6;
+
+            % Create EditField_4Label
+            app.EditField_4Label = uilabel(app.GridLayout);
+            app.EditField_4Label.HorizontalAlignment = 'right';
+            app.EditField_4Label.Layout.Row = 1;
+            app.EditField_4Label.Layout.Column = 7;
+            app.EditField_4Label.Text = '3';
+
+            % Create EditField_4
+            app.EditField_4 = uieditfield(app.GridLayout, 'numeric');
+            app.EditField_4.Layout.Row = 1;
+            app.EditField_4.Layout.Column = 8;
+
+            % Create EditField_5Label
+            app.EditField_5Label = uilabel(app.GridLayout);
+            app.EditField_5Label.HorizontalAlignment = 'right';
+            app.EditField_5Label.Layout.Row = 1;
+            app.EditField_5Label.Layout.Column = 9;
+            app.EditField_5Label.Text = '4+';
+
+            % Create EditField_5
+            app.EditField_5 = uieditfield(app.GridLayout, 'numeric');
+            app.EditField_5.Layout.Row = 1;
+            app.EditField_5.Layout.Column = 10;
+
+            % Create CountButton
+            app.CountButton = uibutton(app.GridLayout, 'push');
+            app.CountButton.ButtonPushedFcn = createCallbackFcn(app, @CountButtonPushed, true);
+            app.CountButton.Layout.Row = 1;
+            app.CountButton.Layout.Column = 11;
+            app.CountButton.Text = 'Count';
+
+            % Create Panel_6
+            app.Panel_6 = uipanel(app.UIFigure);
+            app.Panel_6.Position = [16 490 346 35];
+
+            % Create StepfitLabel
+            app.StepfitLabel = uilabel(app.Panel_6);
+            app.StepfitLabel.Position = [247 6 43 22];
+            app.StepfitLabel.Text = 'Step fit';
+
+            % Create CheckBox
+            app.CheckBox = uicheckbox(app.Panel_6);
+            app.CheckBox.Text = '';
+            app.CheckBox.Position = [300 6 25 22];
+            app.CheckBox.Value = true;
+
+            % Create ShowLabel
+            app.ShowLabel = uilabel(app.Panel_6);
+            app.ShowLabel.FontSize = 20;
+            app.ShowLabel.FontWeight = 'bold';
+            app.ShowLabel.Position = [19 5 59 24];
+            app.ShowLabel.Text = 'Show';
+
+            % Create FiltereddataLabel
+            app.FiltereddataLabel = uilabel(app.Panel_6);
+            app.FiltereddataLabel.Position = [109 6 72 22];
+            app.FiltereddataLabel.Text = 'Filtered data';
+
+            % Create CheckBox_2
+            app.CheckBox_2 = uicheckbox(app.Panel_6);
+            app.CheckBox_2.Text = '';
+            app.CheckBox_2.Position = [194 6 25 22];
+            app.CheckBox_2.Value = true;
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = Trace_viewer_V4
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
