@@ -1,13 +1,13 @@
-dir1 = getDirectory("Choose Source Directory ");
-dir2 = getDirectory("Choose Destination Directory ");
-list = getFileList(dir1);
+dir1 = getDirectory("Choose Source Directory ");   // Choose folder where raw files are located
+dir2 = getDirectory("Choose Destination Directory "); // Choose files where transformed tiffs will be stored
+list = getFileList(dir1); // reads the list of files in the source directory
 setBatchMode(true);
-for (i=0; i<list.length; i++) {
+for (i=0; i<list.length; i++) { 
 	showProgress(i+1, list.length);
-	open(dir1+list[i]);
+	open(dir1+list[i]); // opens each file in the directory sequentially
 
-	run("Rotate 90 Degrees Right");
-	run("Translate...", "x=50 y=0 interpolation=None stack");
-	saveAs("tif",  dir2+list[i]+"_results.csv");
-	close();
+	run("Rotate 90 Degrees Right"); // rotates each image 
+	run("Translate...", "x=50 y=0 interpolation=None stack"); // translates each image 50 pixels in the x direction
+	saveAs("tif",  dir2+list[i]+"_results.csv"); // saves the tiff file in the destination folder
+	close(); // close the file
 }
